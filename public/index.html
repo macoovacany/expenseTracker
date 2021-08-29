@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="styles.css">
 
-  <script>
+  <!-- <script>
     // Check that service workers are supported
     if ('serviceWorker' in navigator) {
       // Use the window load event to keep the page load performant
@@ -18,7 +18,7 @@
         navigator.serviceWorker.register('/sw.js');
       });
     }
-    </script>
+    </script> -->
 
   <title>Budget Tracker</title>
 </head>
@@ -52,6 +52,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+  <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
   <script src="index.js"></script>
 </body>
 </html>

@@ -1,18 +1,23 @@
-let transactions = [];
-let myChart;
+var db = new Dexie('budget');
 
-fetch("/api/transaction")
-  .then(response => {
-    return response.json();
-  })
-  .then(data => {
-    // save db data on global variable
-    transactions = data;
+var transactions = [];
 
-    populateTotal();
-    populateTable();
-    populateChart();
-  });
+db.version(1).stores({
+  offLineTransactions: 'name,value,date'
+});
+
+const saveRecord = async (transaction) => {
+  try {
+    await db.offLineTransactions.put(transaction);
+    return db.offLineTransactions.get(transaction.name);
+  }
+  catch (err) {
+    console.log(err)
+  }
+}
+
+// UI functions 
+
 
 function populateTotal() {
   // reduce transaction amounts to a single total value
@@ -57,28 +62,56 @@ function populateChart() {
     return sum;
   });
 
-  // remove old chart if it exists
-  if (myChart) {
-    myChart.destroy();
+
+  // myChart can be a canvas object the first time this is run:
+  //  the HTMLCanvasElement doesn't have destory method
+  if (!(myChart instanceof HTMLCanvasElement)) {
+    // remove old chart if it exists
+    if (myChart) {
+      myChart.destroy();
+    }
   }
 
   let ctx = document.getElementById("myChart").getContext("2d");
 
   myChart = new Chart(ctx, {
     type: 'line',
-      data: {
-        labels,
-        datasets: [{
-            label: "Total Over Time",
-            fill: true,
-            backgroundColor: "#6666ff",
-            data
-        }]
+    data: {
+      labels,
+      datasets: [{
+        label: "Total Over Time",
+        fill: true,
+        backgroundColor: "#6666ff",
+        data
+      }]
     }
   });
 }
 
-function sendTransaction(isAdding) {
+
+const updateServer = async () => {
+  try {
+    const offlineTransactions = await db.offLineTransactions.toArray();
+
+    const response = await fetch("/api/transaction/bulk",
+      {
+        method: "POST",
+        body: JSON.stringify(offlineTransactions),
+        headers: {
+          Accept: "application/json, text/plain, */*",
+          "Content-Type": "application/json"
+        }
+      });
+console.log(response)
+    if (response) {
+      db.offLineTransactions.clear();
+    }
+  } catch (err) {
+    console.log(err)
+  }
+}
+
+const sendTransaction = async (isAdding) => {
   let nameEl = document.querySelector("#t-name");
   let amountEl = document.querySelector("#t-amount");
   let errorEl = document.querySelector(".form .error");
@@ -107,47 +140,63 @@ function sendTransaction(isAdding) {
   // add to beginning of current array of data
   transactions.unshift(transaction);
 
-  // re-run logic to populate ui with new record
   populateChart();
   populateTable();
   populateTotal();
-  
-  // also send to server
-  fetch("/api/transaction", {
-    method: "POST",
-    body: JSON.stringify(transaction),
-    headers: {
-      Accept: "application/json, text/plain, */*",
-      "Content-Type": "application/json"
+
+  try {
+    // also send to server
+    if (navigator.onLine) {
+      updateServer();
     }
-  })
-  .then(response => {    
-    return response.json();
-  })
-  .then(data => {
+    const response = fetch("/api/transaction", {
+      method: "POST",
+      body: JSON.stringify(transaction),
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "Content-Type": "application/json"
+      }
+    })
+
+    data = response.json();
+
     if (data.errors) {
       errorEl.textContent = "Missing Information";
     }
     else {
       // clear form
-      nameEl.value = "";
-      amountEl.value = "";
+      db.offLineTransactions.clear();
     }
-  })
-  .catch(err => {
+  } catch (err) {
     // fetch failed, so save in indexed db
-    saveRecord(transaction);
+    if (!navigator.onLine) {
+      saveRecord(transaction);
+    }
+
+  } finally {
 
     // clear form
     nameEl.value = "";
     amountEl.value = "";
-  });
-}
+  }
+};
 
-document.querySelector("#add-btn").onclick = function() {
+document.querySelector("#add-btn").onclick = function () {
   sendTransaction(true);
 };
 
-document.querySelector("#sub-btn").onclick = function() {
+document.querySelector("#sub-btn").onclick = function () {
   sendTransaction(false);
 };
+
+
+const getTransactions = async () => {
+  const response = await fetch('api/transaction')
+  transactions = await response.json();
+  populateChart();
+  populateTable();
+  populateTotal();
+  return transactions;
+}
+
+transactions = getTransactions()

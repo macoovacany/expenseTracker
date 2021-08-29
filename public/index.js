@@ -194,7 +194,7 @@ const getTransactions = async () => {
   
   const response = await fetch('api/transaction')
   
-  if (repsonse.err) {
+  if (response.err) {
     transactions = [];
   } else {
     transactions = await response.json();

@@ -102,7 +102,7 @@ const updateServer = async () => {
           "Content-Type": "application/json"
         }
       });
-console.log(response)
+    console.log(response)
     if (response) {
       db.offLineTransactions.clear();
     }
@@ -191,8 +191,15 @@ document.querySelector("#sub-btn").onclick = function () {
 
 
 const getTransactions = async () => {
+  
   const response = await fetch('api/transaction')
-  transactions = await response.json();
+  
+  if (repsonse.err) {
+    transactions = [];
+  } else {
+    transactions = await response.json();
+  }
+
   populateChart();
   populateTable();
   populateTotal();
